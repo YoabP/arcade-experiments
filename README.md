@@ -11,8 +11,5 @@ Experiments modifying old arcade games.
   View the demo here :
   http://notes.underscorediscovery.com:4004/?debug
 
-
 ## License
-
 MIT Licensed.
-See LICENSE if required.
