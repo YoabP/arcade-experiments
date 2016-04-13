@@ -1,8 +1,8 @@
 /*  Copyright 2012-2016 Sven "underscorediscovery" Bergström
-    
+
     written by : http://underscorediscovery.ca
     written for : http://buildnewgames.com/real-time-multiplayer/
-    
+
     MIT Licensed.
 */
 
@@ -127,7 +127,7 @@ if('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 2
 
             //Client specific initialisation
         if(!this.server) {
-            
+
                 //Create a keyboard handler
             this.keyboard = new THREEx.KeyboardState();
 
@@ -218,7 +218,8 @@ game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x,
         this.old_state = {pos:{x:0,y:0}};
         this.cur_state = {pos:{x:0,y:0}};
         this.state_time = new Date().getTime();
-
+        //YP movement direction. Starts still.
+        this.direction = {x:0,y:0};
             //Our local history of inputs
         this.inputs = [];
 
@@ -240,7 +241,7 @@ game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x,
         }
 
     }; //game_player.constructor
-  
+
     game_player.prototype.draw = function(){
 
             //Set the color for this player
@@ -252,13 +253,13 @@ game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x,
             //Draw a status update
         game.ctx.fillStyle = this.info_color;
         game.ctx.fillText(this.state, this.pos.x+10, this.pos.y + 4);
-    
+
     }; //game_player.draw
 
 /*
 
  Common functions
- 
+
     These functions are shared between client and server, and are generic
     for the game state. The client functions are client_* and server functions
     are server_* so these have no prefix.
@@ -267,7 +268,7 @@ game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x,
 
     //Main update loop
 game_core.prototype.update = function(t) {
-    
+
         //Work out the delta time
     this.dt = this.lastframetime ? ( (t - this.lastframetime)/1000.0).fixed() : 0.016;
 
@@ -302,7 +303,7 @@ game_core.prototype.check_collision = function( item ) {
     if(item.pos.x >= item.pos_limits.x_max ) {
         item.pos.x = item.pos_limits.x_max;
     }
-    
+
         //Roof wall.
     if(item.pos.y <= item.pos_limits.y_min) {
         item.pos.y = item.pos_limits.y_min;
@@ -316,7 +317,7 @@ game_core.prototype.check_collision = function( item ) {
         //Fixed point helps be more deterministic
     item.pos.x = item.pos.x.fixed(4);
     item.pos.y = item.pos.y.fixed(4);
-    
+
 }; //game_core.check_collision
 
 
@@ -392,7 +393,7 @@ game_core.prototype.update_physics = function() {
 /*
 
  Server side functions
- 
+
     These functions below are specific to the server side only,
     and usually start with server_* to make things clearer.
 
@@ -487,36 +488,38 @@ game_core.prototype.client_handle_input = function(){
 
     if( this.keyboard.pressed('A') ||
         this.keyboard.pressed('left')) {
-
-            x_dir = -1;
-            input.push('l');
-
+            this.players.self.direction= {x: -1, y: 0};
         } //left
 
     if( this.keyboard.pressed('D') ||
         this.keyboard.pressed('right')) {
-
-            x_dir = 1;
-            input.push('r');
-
+            this.players.self.direction = {x: 1, y: 0};
         } //right
 
     if( this.keyboard.pressed('S') ||
         this.keyboard.pressed('down')) {
-
-            y_dir = 1;
-            input.push('d');
-
+            this.players.self.direction = {x: 0, y: 1};
         } //down
 
     if( this.keyboard.pressed('W') ||
         this.keyboard.pressed('up')) {
-
-            y_dir = -1;
-            input.push('u');
-
+            this.players.self.direction = {x: 0, y: -1};
         } //up
 
+  //create inputs for movement.
+  if( this.players.self.direction.x == -1) {
+          input.push('l');
+      } //left
+  if( this.players.self.direction.x == 1) {
+          input.push('r');
+      } //right
+  if( this.players.self.direction.y == 1) {
+          input.push('d');
+      } //down
+
+  if( this.players.self.direction.y == -1) {
+          input.push('u');
+      } //up
     if(input.length) {
 
             //Update what sequence we are on now
@@ -540,7 +543,7 @@ game_core.prototype.client_handle_input = function(){
         this.socket.send(  server_packet  );
 
             //Return the direction if needed
-        return this.physics_movement_vector_from_direction( x_dir, y_dir );
+        return this.physics_movement_vector_from_direction( this.players.self.direction.x, this.players.self.direction.y );
 
     } else {
 
@@ -717,7 +720,7 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
         var player_host = this.players.self.host ?  this.players.self : this.players.other;
         var player_client = this.players.self.host ?  this.players.other : this.players.self;
         var this_player = this.players.self;
-        
+
             //Store the server time (this is offset by the latency in the network, by the time we get it)
         this.server_time = data.t;
             //Update our local offset time from the last server update
@@ -762,7 +765,7 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
                 //Handle the latest positions from the server
                 //and make sure to correct our local predictions, making the server have final say.
             this.client_process_net_prediction_correction();
-            
+
         } //non naive
 
 }; //game_core.client_onserverupdate_recieved
@@ -781,7 +784,7 @@ game_core.prototype.client_update_local_position = function(){
             //Make sure the visual position matches the states we have stored
         //this.players.self.pos = this.v_add( old_state, this.v_mul_scalar( this.v_sub(current_state,old_state), t )  );
         this.players.self.pos = current_state;
-        
+
             //We handle collision on client if predicting.
         this.check_collision( this.players.self );
 
@@ -880,7 +883,7 @@ game_core.prototype.client_create_ping_timer = function() {
         this.socket.send('p.' + (this.last_ping_time) );
 
     }.bind(this), 1000);
-    
+
 }; //game_core.client_create_ping_timer
 
 
@@ -908,7 +911,7 @@ game_core.prototype.client_create_configuration = function() {
 
     this.client_time = 0.01;            //Our local 'clock' based on server time - client interpolation(net_offset).
     this.server_time = 0.01;            //The time the server reported it was at, last we heard from it
-    
+
     this.dt = 0.016;                    //The time that the last frame took to run
     this.fps = 0;                       //The current instantaneous fps (1/this.dt)
     this.fps_avg_count = 0;             //The number of samples we have taken for fps_avg
@@ -946,7 +949,7 @@ game_core.prototype.client_create_debug_gui = function() {
         _othersettings.add(this, 'client_predict').listen();
 
     var _debugsettings = this.gui.addFolder('Debug view');
-        
+
         _debugsettings.add(this, 'show_help').listen();
         _debugsettings.add(this, 'fps_avg').listen();
         _debugsettings.add(this, 'show_server_pos').listen();
@@ -968,7 +971,7 @@ game_core.prototype.client_create_debug_gui = function() {
         _consettings.open();
 
     var _netsettings = this.gui.addFolder('Networking');
-        
+
         _netsettings.add(this, 'net_offset').min(0.01).step(0.001).listen();
         _netsettings.add(this, 'server_time').step(0.001).listen();
         _netsettings.add(this, 'client_time').step(0.001).listen();
@@ -1013,7 +1016,7 @@ game_core.prototype.client_onreadygame = function(data) {
         //Store their info colors for clarity. server is always blue
     player_host.info_color = '#2288cc';
     player_client.info_color = '#cc8822';
-        
+
         //Update their information
     player_host.state = 'local_pos(hosting)';
     player_client.state = 'local_pos(joined)';
@@ -1118,11 +1121,11 @@ game_core.prototype.client_onnetmessage = function(data) {
 
         break; //'s'
     } //command
-                
+
 }; //client_onnetmessage
 
 game_core.prototype.client_ondisconnect = function(data) {
-    
+
         //When we disconnect, we don't know if the other player is
         //connected or not, and since we aren't, everything goes to offline
 
@@ -1136,7 +1139,7 @@ game_core.prototype.client_ondisconnect = function(data) {
 }; //client_ondisconnect
 
 game_core.prototype.client_connect_to_server = function() {
-        
+
             //Store a local reference to our connection to the server
         this.socket = io.connect();
 
