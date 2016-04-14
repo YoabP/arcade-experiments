@@ -242,10 +242,8 @@ game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x,
             //with only a host, the other player is set up in the 'else' below
         if(player_instance) {
             this.pos = { x:20, y:20 };
-            this.prev_pos = { x:20, y:20 };
         } else {
             this.pos = { x:500, y:200 };
-            this.prev_pos = { x:500, y:200 };
         }
 
     }; //game_player.constructor
@@ -528,6 +526,8 @@ game_core.prototype.client_handle_input = function(){
     var y_dir = this.players.self.direction.y;
     var input = [];
     this.client_has_input = false;
+    var newpoint = this.pos(this.players.self.pos);
+    var oldpoint = this.players.self.trail[this.players.self.trail.length-1];
 
     if( this.keyboard.pressed('A') ||
         this.keyboard.pressed('left')) {
@@ -550,7 +550,13 @@ game_core.prototype.client_handle_input = function(){
         } //up
   //check for direction changes
   if(x_dir != this.players.self.direction.x || y_dir != this.players.self.direction.y){
-    this.players.self.trail.push(this.players.self.pos);
+    if(this.players.self.direction.x !=0){
+      if(oldpoint)newpoint.x = oldpoint.x;
+    }
+    else{
+      if(oldpoint)newpoint.y = oldpoint.y;
+    }
+    this.players.self.trail.push(newpoint);
   }
   //update trail
   this.players.self.handle_trail();
@@ -860,22 +866,26 @@ game_core.prototype.client_other_paths = function(player) {
   var old_dir = this.pos(player.direction);
   var move_offset = this.v_sub(player.pos, player.prev_pos);
   player.prev_pos = this.pos(player.pos);
-
+  if(player.prev_pos == 0 && player.prev_pos == 0) return;
+  var newpoint = this.pos(player.pos);
+  var oldpoint = player.trail[player.trail.length-1];
   if(move_offset.x != 0 || move_offset.y != 0){
     if(Math.abs(move_offset.x) > Math.abs(move_offset.y)){
       //moving on x
       player.direction.y = 0;
       player.direction.x = (move_offset.x > 0)? 1: -1;
+      if(oldpoint)newpoint.x = oldpoint.x;
     }
     else{
       //moving on y
       player.direction.x = 0;
       player.direction.y = (move_offset.y > 0)? 1: -1;
+      if(oldpoint)newpoint.y = oldpoint.y;
     }
   }
   //check new vs old direction
   if(old_dir.x != player.direction.x || old_dir.y != player.direction.y){
-    player.trail.push(player.pos);
+    player.trail.push(newpoint);
   }
 
   //update this trail
@@ -1084,6 +1094,13 @@ game_core.prototype.client_onreadygame = function(data) {
 
     var player_host = this.players.self.host ?  this.players.self : this.players.other;
     var player_client = this.players.self.host ?  this.players.other : this.players.self;
+    this.players.self.prev_pos = {x:0, y:0};
+    this.players.self.trail = [];
+    this.players.self.trail.direction = {x:0, y:0};
+
+    this.players.other.prev_pos = {x:0, y:0};
+    this.players.other.trail = [];
+    this.players.other.trail.direction = {x:0, y:0};
 
     this.local_time = server_time + this.net_latency;
     console.log('server time is about ' + this.local_time);
@@ -1091,7 +1108,9 @@ game_core.prototype.client_onreadygame = function(data) {
         //Store their info colors for clarity. server is always blue
     player_host.info_color = '#2288cc';
     player_client.info_color = '#cc8822';
-
+    //set colors
+    player_host.color = '#2288cc';
+    player_client.color = '#cc8822';
         //Update their information
     player_host.state = 'local_pos(hosting)';
     player_client.state = 'local_pos(joined)';
@@ -1208,8 +1227,10 @@ game_core.prototype.client_ondisconnect = function(data) {
     this.players.self.state = 'not-connected';
     this.players.self.online = false;
 
+
     this.players.other.info_color = 'rgba(255,255,255,0.1)';
     this.players.other.state = 'not-connected';
+
 
 }; //client_ondisconnect
 
