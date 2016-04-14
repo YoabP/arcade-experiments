@@ -358,29 +358,22 @@ game_core.prototype.line_intersect = function(A,B,C,D )
 
 		return (t >= 0) && (t <= 1) && (u >= 0) && (u <= 1);
 	};
-  var boolflag = true;
 game_core.prototype.trail_intersect = function(p1, p2, player)
 {
-  var prevPoint = player.pos;
+  var prevPoint = this.pos(player.pos);
   for(var i = player.trail.length; i--;){
-    var point = player.trail[i];
-    if(p1.x == point.x &&
-       p1.y == point.y ||
-       p2.x == prevPoint.x &&
-       p2.y == prevPoint.y
-     ) continue;
-     if(p1.x == prevPoint.x &&
-        p1.y == prevPoint.y ||
-        p2.x == point.x &&
-        p2.y == point.y
-      ) continue;
-    if(this.line_intersect(p1,p2,point, prevPoint)){
-      if (boolflag){
-        console.log(p1,p2,point,prevPoint);
+    var point = this.pos(player.trail[i]);
 
-        console.log(player.trail);
-        boolflag = false;
-      }
+    if(p1.x === point.x && p1.y === point.y ||
+      p2.x === point.x && p2.y === point.y ||
+      p1.x === prevPoint.x && p1.y === prevPoint.y ||
+      p2.x === prevPoint.x && p2.y === prevPoint.y
+    ) {
+        prevPoint = point;
+        continue;
+    }
+    if(this.line_intersect(p1,p2,point, prevPoint)){
+
       return true;
     }
     prevPoint = point;
@@ -414,9 +407,10 @@ game_core.prototype.check_collision = function( item ) {
     item.pos.y = item.pos.y.fixed(4);
 
     //line intersection with trails
-    var p1 = item.trail[item.trail.length-1];
-    var p2 = item.pos;
-    if(!p1) return;
+
+    if(!item.trail[item.trail.length-1]) return;
+    var p1 = this.pos(item.trail[item.trail.length-1]);
+    var p2 = this.pos(item.pos);
     var lost = false;
     lost = this.trail_intersect(p1,p2,this.players.self)
         || this.trail_intersect(p1,p2,this.players.other);
