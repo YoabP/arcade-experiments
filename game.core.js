@@ -180,7 +180,9 @@ if( 'undefined' != typeof global ) {
 Number.prototype.fixed = function(n) { n = n || 3; return parseFloat(this.toFixed(n)); };
     //copies a 2d vector like object from one to another
 game_core.prototype.pos = function(a) { return {x:a.x,y:a.y}; };
-    //Add a 2d vector with another one and return the resulting vector
+  //Get distance between two vectors
+game_core.prototype.v_distance = function(a,b) { return Math.sqrt(Math.pow(a.x-b.x,2) + Math.pow(a.y-b.y,2))  };
+  //Add a 2d vector with another one and return the resulting vector
 game_core.prototype.v_add = function(a,b) { return { x:(a.x+b.x).fixed(), y:(a.y+b.y).fixed() }; };
     //Subtract a 2d vector with another one and return the resulting vector
 game_core.prototype.v_sub = function(a,b) { return { x:(a.x-b.x).fixed(),y:(a.y-b.y).fixed() }; };
@@ -220,6 +222,10 @@ game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x,
         this.state_time = new Date().getTime();
         //YP movement direction. Starts still.
         this.direction = {x:0,y:0};
+
+        //array of points saved for trail
+        this.trail = [];
+        this.max_trail = this.game.world.width*2;
             //Our local history of inputs
         this.inputs = [];
 
@@ -241,19 +247,52 @@ game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x,
         }
 
     }; //game_player.constructor
+    var test_d = true;
+    game_player.prototype.trim_trail = function(prevPoint,prevDist, index){
+      var remainingDistance = this.max_trail - prevDist;
+      var direction = game_core.prototype.v_sub(this.trail[index], prevPoint);
+      var distance = game_core.prototype.v_distance(this.trail[index], prevPoint);
+      var offset= game_core.prototype.v_mul_scalar(direction, remainingDistance/distance);
+      var newPoint = game_core.prototype.v_add(prevPoint, offset);
+      this.trail.splice(0, index+1, newPoint );
+     }
+    game_player.prototype.handle_trail = function(){
+      var distance = 0;
+      var prevPoint = this.pos;
+      for(var i = this.trail.length; i--;){
+        var point = this.trail[i];
+        var prevDist = distance;
+        distance += game_core.prototype.v_distance(prevPoint, point);
+        if(distance > this.max_trail){
+          this.trim_trail(prevPoint,prevDist, i);
+        }
+        prevPoint = point;
+      }
 
+    }; //game_player.handle_trail
     game_player.prototype.draw = function(){
 
             //Set the color for this player
         game.ctx.fillStyle = this.color;
 
             //Draw a rectangle for us
+            //use quadraticCurveTo(cp1x, cp1y, x, y) for smoother curves
         game.ctx.fillRect(this.pos.x - this.size.hx, this.pos.y - this.size.hy, this.size.x, this.size.y);
+            //Draw the trail
+      var old_stroke = game.ctx.strokeStyle;
+      game.ctx.strokeStyle = this.color;
+       game.ctx.beginPath();
+       this.trail.forEach(function(point, index){
+         if (index == 0) game.ctx.moveTo(point.x,point.y);
+         game.ctx.lineTo(point.x,point.y);
+       });
+       game.ctx.lineTo(this.pos.x, this.pos.y);
+       game.ctx.stroke();
 
-            //Draw a status update
+          //Draw a status update
         game.ctx.fillStyle = this.info_color;
         game.ctx.fillText(this.state, this.pos.x+10, this.pos.y + 4);
-
+        game.ctx.strokeStyle = old_stroke;
     }; //game_player.draw
 
 /*
@@ -481,8 +520,8 @@ game_core.prototype.client_handle_input = function(){
         //It also sends the input information to the server immediately
         //as it is pressed. It also tags each input with a sequence number.
 
-    var x_dir = 0;
-    var y_dir = 0;
+    var x_dir =this.players.self.direction.x ;
+    var y_dir = this.players.self.direction.y;
     var input = [];
     this.client_has_input = false;
 
@@ -505,7 +544,12 @@ game_core.prototype.client_handle_input = function(){
         this.keyboard.pressed('up')) {
             this.players.self.direction = {x: 0, y: -1};
         } //up
-
+  //check for direction changes
+  if(x_dir != this.players.self.direction.x || y_dir != this.players.self.direction.y){
+    this.players.self.trail.push(this.players.self.pos);
+  }
+  //update trail
+  this.players.self.handle_trail();
   //create inputs for movement.
   if( this.players.self.direction.x == -1) {
           input.push('l');
