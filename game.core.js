@@ -416,6 +416,9 @@ game_core.prototype.check_collision = function( item ) {
         || this.trail_intersect(p1,p2,this.players.other);
     if(lost){
       item.color = "#FF0000";
+      this.socket.send('d.pending'); //TODO add relevant data
+      alert("You lost");
+      location.reload();
     }
 
 
@@ -1235,6 +1238,11 @@ game_core.prototype.client_on_otherclientcolorchange = function(data) {
     this.players.other.color = data;
 
 }; //game_core.client_on_otherclientcolorchange
+game_core.prototype.client_on_player_died = function(data) {
+
+    alert("You Won");
+    location.reload();
+}; //game_core.client_on_player_died
 
 game_core.prototype.client_onping = function(data) {
 
@@ -1249,7 +1257,6 @@ game_core.prototype.client_onnetmessage = function(data) {
     var command = commands[0];
     var subcommand = commands[1] || null;
     var commanddata = commands[2] || null;
-
     switch(command) {
         case 's': //server message
 
@@ -1272,7 +1279,8 @@ game_core.prototype.client_onnetmessage = function(data) {
 
                 case 'c' : //other player changed colors
                     this.client_on_otherclientcolorchange(commanddata); break;
-
+                case 'd' : //a player died
+                    this.client_on_player_died(commanddata); break;
             } //subcommand
 
         break; //'s'
