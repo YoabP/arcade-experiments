@@ -331,6 +331,62 @@ game_core.prototype.update = function(t) {
     Shared between server and client.
     In this example, `item` is always of type game_player.
 */
+game_core.prototype.line_intersect = function(A,B,C,D )
+	{
+		var CmP = {x: C.x - A.x, y:C.y - A.y};
+		var r = { x:B.x - A.x, y:B.y - A.y};
+		var s = { x:D.x - C.x, y:D.y - C.y};
+
+		var CmPxr = CmP.x * r.y - CmP.y * r.x;
+		var CmPxs = CmP.x * s.y - CmP.y * s.x;
+		var rxs = r.x * s.y - r.y * s.x;
+
+		if (CmPxr == 0)
+		{
+			// Lines are collinear, and so intersect if they have any overlap
+
+			return ((C.x - A.x < 0) != (C.x - B.x < 0))
+				|| ((C.y - A.y < 0) != (C.y - B.y < 0));
+		}
+
+		if (rxs == 0)
+			return false; // Lines are parallel.
+
+		var rxsr = 1 / rxs;
+		var t = CmPxs * rxsr;
+		var u = CmPxr * rxsr;
+
+		return (t >= 0) && (t <= 1) && (u >= 0) && (u <= 1);
+	};
+  var boolflag = true;
+game_core.prototype.trail_intersect = function(p1, p2, player)
+{
+  var prevPoint = player.pos;
+  for(var i = player.trail.length; i--;){
+    var point = player.trail[i];
+    if(p1.x == point.x &&
+       p1.y == point.y ||
+       p2.x == prevPoint.x &&
+       p2.y == prevPoint.y
+     ) continue;
+     if(p1.x == prevPoint.x &&
+        p1.y == prevPoint.y ||
+        p2.x == point.x &&
+        p2.y == point.y
+      ) continue;
+    if(this.line_intersect(p1,p2,point, prevPoint)){
+      if (boolflag){
+        console.log(p1,p2,point,prevPoint);
+
+        console.log(player.trail);
+        boolflag = false;
+      }
+      return true;
+    }
+    prevPoint = point;
+  }
+  return false;
+};
 game_core.prototype.check_collision = function( item ) {
 
         //Left wall.
@@ -356,6 +412,18 @@ game_core.prototype.check_collision = function( item ) {
         //Fixed point helps be more deterministic
     item.pos.x = item.pos.x.fixed(4);
     item.pos.y = item.pos.y.fixed(4);
+
+    //line intersection with trails
+    var p1 = item.trail[item.trail.length-1];
+    var p2 = item.pos;
+    if(!p1) return;
+    var lost = false;
+    lost = this.trail_intersect(p1,p2,this.players.self)
+        || this.trail_intersect(p1,p2,this.players.other);
+    if(lost){
+      item.color = "#FF0000";
+    }
+
 
 }; //game_core.check_collision
 
