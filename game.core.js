@@ -222,7 +222,7 @@ game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x,
         this.state_time = new Date().getTime();
         //YP movement direction. Starts still.
         this.direction = {x:0,y:0};
-
+        this.prev_pos = {x:0, y:0};
         //array of points saved for trail
         this.trail = [];
         this.max_trail = this.game.world.width*2;
@@ -242,8 +242,10 @@ game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x,
             //with only a host, the other player is set up in the 'else' below
         if(player_instance) {
             this.pos = { x:20, y:20 };
+            this.prev_pos = { x:20, y:20 };
         } else {
             this.pos = { x:500, y:200 };
+            this.prev_pos = { x:500, y:200 };
         }
 
     }; //game_player.constructor
@@ -367,6 +369,7 @@ game_core.prototype.process_input = function( player ) {
     var x_dir = 0;
     var y_dir = 0;
     var ic = player.inputs.length;
+    var old_dir = this.pos(player.direction);
     if(ic) {
         for(var j = 0; j < ic; ++j) {
                 //don't process ones we already have simulated locally
@@ -388,6 +391,7 @@ game_core.prototype.process_input = function( player ) {
                 if(key == 'u') {
                     y_dir -= 1;
                 }
+
             } //for all input values
 
         } //for each input command
@@ -851,7 +855,32 @@ game_core.prototype.client_update_physics = function() {
     }
 
 }; //game_core.client_update_physics
+game_core.prototype.client_other_paths = function(player) {
+  //do not update if not moving
+  var old_dir = this.pos(player.direction);
+  var move_offset = this.v_sub(player.pos, player.prev_pos);
+  player.prev_pos = this.pos(player.pos);
 
+  if(move_offset.x != 0 || move_offset.y != 0){
+    if(Math.abs(move_offset.x) > Math.abs(move_offset.y)){
+      //moving on x
+      player.direction.y = 0;
+      player.direction.x = (move_offset.x > 0)? 1: -1;
+    }
+    else{
+      //moving on y
+      player.direction.x = 0;
+      player.direction.y = (move_offset.y > 0)? 1: -1;
+    }
+  }
+  //check new vs old direction
+  if(old_dir.x != player.direction.x || old_dir.y != player.direction.y){
+    player.trail.push(player.pos);
+  }
+
+  //update this trail
+  player.handle_trail();
+};//game_core.client_other_paths
 game_core.prototype.client_update = function() {
 
         //Clear the screen area
@@ -863,6 +892,8 @@ game_core.prototype.client_update = function() {
         //Capture inputs from the player
     this.client_handle_input();
 
+      //analyze paths for other players
+      this.client_other_paths(this.players.other)
         //Network player just gets drawn normally, with interpolation from
         //the server updates, smoothing out the positions from the past.
         //Note that if we don't have prediction enabled - this will also
