@@ -273,26 +273,54 @@ game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x,
     game_player.prototype.draw = function(){
 
             //Set the color for this player
-        game.ctx.fillStyle = this.color;
-
+        var color = this.color;
+        var box;
+        if (color == '#2288cc'){
+          box = game.drawer.boxBlue;
+        }
+        else{
+          box = game.drawer.boxRed;
+        }
+        if (this.direction.x){
+          box.rotation.y = Math.PI/2;
+        }
+        else{
+          box.rotation.y = 0;
+        }
             //Draw a rectangle for us
             //use quadraticCurveTo(cp1x, cp1y, x, y) for smoother curves
-        game.ctx.fillRect(this.pos.x - this.size.hx, this.pos.y - this.size.hy, this.size.x, this.size.y);
+        //game.ctx.fillRect(this.pos.x - this.size.hx, this.pos.y - this.size.hy, this.size.x, this.size.y);
+        var coords3D = game.drawer.mapTo3Dcoords(this.pos, 8, {w:game.world.width, h:game.world.height});
+        box.position.x = coords3D.x;
+        box.position.y = coords3D.y;
+        box.position.z = coords3D.z;
             //Draw the trail
-      var old_stroke = game.ctx.strokeStyle;
-      game.ctx.strokeStyle = this.color;
-       game.ctx.beginPath();
+      //var old_stroke = game.ctx.strokeStyle;
+      //game.ctx.strokeStyle = this.color;
+      var paths = game.drawer.ribbonPaths(this.trail, this.pos, 8, {w:game.world.width, h:game.world.height});
+      if (color == '#2288cc'){
+        if(game.drawer.bluePath.dispose){game.drawer.bluePath.dispose();}
+        game.drawer.bluePath = BABYLON.Mesh.CreateRibbon("ribbon", paths, false, false, 0, game.drawer.scene, false, BABYLON.Mesh.DOUBLESIDE );
+        game.drawer.bluePath.material = game.drawer.blue;
+      }
+      else{
+        if (game.drawer.redPath.dispose){game.drawer.redPath.dispose();}
+        game.drawer.redPath = BABYLON.Mesh.CreateRibbon("ribbon", paths, false, false, 0, game.drawer.scene, false, BABYLON.Mesh.DOUBLESIDE );
+        game.drawer.redPath.material = game.drawer.red;
+      }
+
+      /* game.ctx.beginPath();
        this.trail.forEach(function(point, index){
          if (index == 0) game.ctx.moveTo(point.x,point.y);
          game.ctx.lineTo(point.x,point.y);
        });
        game.ctx.lineTo(this.pos.x, this.pos.y);
        game.ctx.stroke();
-
+       */
           //Draw a status update
-        game.ctx.fillStyle = this.info_color;
+        /*game.ctx.fillStyle = this.info_color;
         game.ctx.fillText(this.state, this.pos.x+10, this.pos.y + 4);
-        game.ctx.strokeStyle = old_stroke;
+        game.ctx.strokeStyle = old_stroke;*/
     }; //game_player.draw
 
 /*
@@ -959,10 +987,10 @@ game_core.prototype.client_other_paths = function(player) {
 game_core.prototype.client_update = function() {
 
         //Clear the screen area
-    this.ctx.clearRect(0,0,720,480);
+    //this.ctx.clearRect(0,0,720,480);
 
         //draw help/information if required
-    this.client_draw_info();
+    //this.client_draw_info();
 
         //Capture inputs from the player
     this.client_handle_input();
@@ -1349,7 +1377,7 @@ game_core.prototype.client_refresh_fps = function() {
 
 
 game_core.prototype.client_draw_info = function() {
-
+/*
         //We don't want this to be too distracting
     this.ctx.fillStyle = 'rgba(255,255,255,0.3)';
 
@@ -1378,5 +1406,5 @@ game_core.prototype.client_draw_info = function() {
 
         //Reset the style back to full white.
     this.ctx.fillStyle = 'rgba(255,255,255,1)';
-
+*/
 }; //game_core.client_draw_help

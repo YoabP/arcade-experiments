@@ -37,7 +37,7 @@ window.onload = function(){
 		game.drawer.ribbonPaths = function(points, position, height, dimensions){
 			var paths = [];
 			points.forEach(function(point){
-				var coords = mapTo3Dcoords(point, 8, dimensions);
+				var coords = game.drawer.mapTo3Dcoords(point, 8, dimensions);
 				var path = [];
 				path.push(new BABYLON.Vector3(coords.x, coords.y - height/2, coords.z));
 				path.push(new BABYLON.Vector3(coords.x, coords.y - height/4, coords.z));
@@ -45,7 +45,7 @@ window.onload = function(){
 				path.push(new BABYLON.Vector3(coords.x, coords.y + height/2, coords.z));
 				paths.push(path);
 			});
-			var coords = mapTo3Dcoords(position, 8, dimensions);
+			var coords = game.drawer.mapTo3Dcoords(position, 8, dimensions);
 			var last = [];
 			last.push(new BABYLON.Vector3(coords.x, coords.y - height/2, coords.z));
 			last.push(new BABYLON.Vector3(coords.x, coords.y - height/4, coords.z));
@@ -95,7 +95,7 @@ window.onload = function(){
 		// target the camera to scene origin
 		game.drawer.camera.setTarget(new BABYLON.Vector3(0,0,-50));
 		// attach the camera to the canvas
-		game.drawer.camera.attachControl(game.viewport, false);
+		//game.drawer.camera.attachControl(game.viewport, false);
 
 		// create a basic light, aiming 0,1,0 - meaning, to the sky
 		game.drawer.light = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0,0,1), game.drawer.scene);
@@ -262,10 +262,10 @@ window.onload = function(){
 		});
 
 			//Fetch the rendering contexts
-		game.ctx = game.viewport.getContext('2d');
+		//game.ctx = game.viewport.getContext('2d');
 
 			//Set the draw style for the font
-		game.ctx.font = '11px "Helvetica"';
+		//game.ctx.font = '11px "Helvetica"';
 
 		//Finally, start the loop
 	game.update( new Date().getTime() );
